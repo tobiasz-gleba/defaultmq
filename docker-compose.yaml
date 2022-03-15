@@ -1,0 +1,98 @@
+version: "3.0"
+services:
+  elasticsearch:
+    container_name: es-container
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    environment:
+      - xpack.security.enabled=false
+      - "discovery.type=single-node"
+    ports:
+      - 9200:9200
+    healthcheck:
+      interval: 20s
+      retries: 10
+      test: curl -s http://localhost:9200/_cluster/health | grep -vq '"status":"red"'
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 900M
+
+  redis:
+    container_name: redis
+    hostname: redis
+    image: redis
+
+  redis-commander:
+    container_name: redis-commander
+    hostname: redis-commander
+    image: rediscommander/redis-commander:latest
+    restart: always
+    environment:
+    - REDIS_HOSTS=local:redis:6379
+    ports:
+    - "8081:8081"
+
+  kibana:
+    container_name: kb-container
+    image: docker.elastic.co/kibana/kibana:7.17.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://es-container:9200
+    ports:
+      - 5601:5601
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 900M
+
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:7.17.0
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - 8200:8200
+
+  defaultmq:
+    # depends_on:
+    #   - defaultmq-tests
+    #   - defaultmq-db
+    build:
+      context: src
+      target: release
+    container_name: defaultmq
+    restart: unless-stopped
+    ports:
+      - "7000:80"
+    environment:
+      SERVER_DEVELOPMENT: "True"
+      LOG_LEVEL: debug
+    # volumes: 
+    #   - ./src/app/logs:/app/logs
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1'
+    #       memory: 500M
+    # logging:
+    #   options:
+    #     max-size: "512m"
+
+  # defaultmq-tests:
+  #   build:
+  #     context: src
+  #     target: test
+  #   container_name: defaultmq-tests
+  # rabbitmq:
+  #   container_name: rabbitmq
+  #   image: rabbitmq:3.8-management-alpine
+  #   environment:
+  #     - RABBITMQ_DEFAULT_USER=user
+  #     - RABBITMQ_DEFAULT_PASS=password
+  #   ports:
+  #     - '15672:15672'
+  
+
+volumes:
+  defaultmq-db-volume:

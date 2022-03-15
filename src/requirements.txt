@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+requests
+elastic-apm
+ecs-logging
+pydantic[email]
+elasticsearch
+redis
+croniter

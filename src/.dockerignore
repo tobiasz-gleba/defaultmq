@@ -1,0 +1,11 @@
+**/.pytest_cache
+.gitignore
+.github
+docker-compose.yaml
+README.md
+Dockerfile
+/.vscode/
+/app/.pytest_cache
+/.pytest_cache/
+/.vscode/
+**/__pycache__

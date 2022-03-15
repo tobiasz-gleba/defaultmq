@@ -1,0 +1,31 @@
+version: 1
+disable_existing_loggers: False
+formatters:
+  default:
+    "()": ecs_logging.StdlibFormatter
+    exclude_fields: ["log.original", "process", "log.origin", "ecs", "color_message", "log.logger"]
+handlers:
+  console:
+    formatter: default
+    class: logging.StreamHandler
+    stream: ext://sys.stderr
+loggers:
+  uvicorn.error:
+    level: INFO
+    handlers:
+      - console
+    propagate: True
+  uvicorn.access:
+    level: INFO
+    handlers:
+      - console
+    propagate: True
+  uvicorn.app:
+    level: DEBUG
+    handlers:
+      - console
+    propagate: True
+  elasticapm.transport:
+    level: WARNING
+    handlers:
+      - console
