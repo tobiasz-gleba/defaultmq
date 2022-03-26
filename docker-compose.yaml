@@ -4,8 +4,13 @@ services:
     container_name: es-container
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
     environment:
-      - xpack.security.enabled=false
-      - "discovery.type=single-node"
+    - discovery.type=single-node
+    - cluster.routing.allocation.disk.threshold_enabled=true
+    - cluster.routing.allocation.disk.watermark.low=65%
+    - cluster.routing.allocation.disk.watermark.high=70%
+    - xpack.security.enabled=true
+    - xpack.security.audit.enabled=true
+    - ELASTIC_PASSWORD=test
     ports:
       - 9200:9200
     healthcheck:
@@ -38,6 +43,8 @@ services:
     image: docker.elastic.co/kibana/kibana:7.17.0
     environment:
       - ELASTICSEARCH_HOSTS=http://es-container:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=test
     ports:
       - 5601:5601
     deploy:
@@ -48,6 +55,14 @@ services:
 
   apm-server:
     image: docker.elastic.co/apm/apm-server:7.17.0
+    command: >
+      apm-server -e
+        -E monitoring.enabled=true
+        -E apm-server.expvar.enabled=true
+        -E apm-server.instrumentation.enabled=true
+        -E output.elasticsearch.hosts=["http://es-container:9200"]
+        -E output.elasticsearch.username=elastic
+        -E output.elasticsearch.password=test
     depends_on:
       elasticsearch:
         condition: service_healthy

@@ -1,37 +1,24 @@
-from elasticsearch import Elasticsearch, NotFoundError
+from elasticsearch import Elasticsearch, NotFoundError, AuthenticationException
 import redis
 import json
-from utils.observability import logger
-from utils.exceptions import NotFoundInDatabase
-redis = redis.Redis(host='redis', port=6379)
+# from utils.observability import logger
+from utils.exceptions import NotFoundInDatabase, UnauthorizedDbAccess
+from config import config
+cache = redis.Redis(host='redis', port=6379)
 
 class ElasticsearchBackend():
 
     def _init_db_conn(self, auth):
-        es = Elasticsearch(auth)
+        es = Elasticsearch(config.db.DB_CONNECTION_STRING, http_auth=auth)
         return es
 
-    async def db_check_connection(self) -> int:
-        return 200
- 
-    async def _create_index(es, index):
-        es.indices.create(index=index, ignore=400)
 
-    async def create_event(self, auth, index, document):
-        index = f'defaultmq-{index}'
-        es = Elasticsearch(auth)
-        es.indices.create(index=index, ignore=400)
-        es.index(index=index, document=document)
+    async def _create_final_index_name(slef, index) -> str:
+        return f'{config.server.SERVER_API_APP_NAME}-{index}'.lower()
 
-    async def get_event(self, auth, index, document_id):
-        index = f'defaultmq-{index}'
-        es = Elasticsearch(auth)
-        result = es.get(index=index, id=document_id)
-        result = result["_source"]["message"]
-        return result
-    
+
     async def _update_events_statuses(self, auth, index, consumer, events, cache_key):
-        es = Elasticsearch(auth)
+        es = self._init_db_conn(auth)
 
         es.update_by_query(
             index=index,
@@ -52,9 +39,11 @@ class ElasticsearchBackend():
             wait_for_completion = True,
             refresh=True
         )
-        concurrent_consumption = json.loads(redis.get(cache_key))
+        concurrent_consumption = json.loads(cache.get(cache_key))
         consumption_delta = list(set(concurrent_consumption).difference(set(events)))
-        redis.set(cache_key, str(json.dumps(consumption_delta)), ex=60)
+        cache.set(cache_key, str(json.dumps(consumption_delta)), ex=60)
+        del es
+
 
     async def _process_elastic_events_response(self, response, cache_key):
         events = []
@@ -63,23 +52,48 @@ class ElasticsearchBackend():
         if events == []:
             raise NotFoundInDatabase
 
-        concurrent_consumption = redis.get(cache_key)
+        concurrent_consumption = cache.get(cache_key)
 
         if concurrent_consumption == None or concurrent_consumption == "[]": 
-            redis.set(cache_key, str(json.dumps(events)), ex=60) 
+            cache.set(cache_key, str(json.dumps(events)), ex=60) 
         else:
             concurrent_consumption = list(json.loads(concurrent_consumption))
             merged_consumption = list(set(events + concurrent_consumption))
             events = list(set(events).difference(set(concurrent_consumption)))
-            redis.set(cache_key, str(json.dumps(merged_consumption)), ex=60)
+            cache.set(cache_key, str(json.dumps(merged_consumption)), ex=60)
 
         return events
+        
+
+    async def create_event(self, auth, index, document):
+        index = await self._create_final_index_name(index)
+
+        try: 
+            es = self._init_db_conn(auth)
+            es.index(index=index, document=document, ignore=400)
+            del es
+        except AuthenticationException:
+            raise UnauthorizedDbAccess
+
+
+    async def get_event(self, auth, index, document_id):
+        index = await self._create_final_index_name(index)
+
+        try:
+            es = self._init_db_conn(auth)
+            result = es.get(index=index, id=document_id)
+            del es
+        except AuthenticationException:
+            raise UnauthorizedDbAccess
+
+        result = result["_source"]["message"]
+        return result
 
 
     async def consume_events(self, auth, index, consumer, batch):
-        index = f'defaultmq-{index}'
+        index = await self._create_final_index_name(index)
         cache_key = f'{index}-{consumer}'
-        es = Elasticsearch(auth)
+        es = Elasticsearch(config.db.DB_CONNECTION_STRING, http_auth=auth)
         try: 
             response = es.search(
                 index=index,
@@ -104,9 +118,13 @@ class ElasticsearchBackend():
             )
             events = await self._process_elastic_events_response(response, cache_key)
             await self._update_events_statuses(auth, index, consumer, events, cache_key)
+            del es
     
         except NotFoundError:
             raise NotFoundInDatabase
+
+        except AuthenticationException:
+            raise UnauthorizedDbAccess
 
         return events
 

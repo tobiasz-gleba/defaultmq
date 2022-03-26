@@ -3,5 +3,9 @@ class Error(Exception):
     pass
 
 class NotFoundInDatabase(Error):
-    """Base class for other exceptions"""
+    # """Base class for other exceptions"""
+    pass
+
+class UnauthorizedDbAccess(Error):
+    # """Base class for other exceptions"""
     pass
