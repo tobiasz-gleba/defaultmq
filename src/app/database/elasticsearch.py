@@ -8,6 +8,13 @@ cache = redis.Redis(host='redis', port=6379)
 
 class ElasticsearchBackend():
 
+    def __init__(self) -> None:
+        pass
+    # def __init__(self, server_name, connection_string):
+    #     self.server_name = server_name
+    #     self.connection_string = connection_string
+
+
     def _init_db_conn(self, auth):
         es = Elasticsearch(config.db.DB_CONNECTION_STRING, http_auth=auth)
         return es
