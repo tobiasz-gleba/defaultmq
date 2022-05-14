@@ -8,3 +8,4 @@ elasticsearch
 redis
 croniter
 python-memcached
+motor
