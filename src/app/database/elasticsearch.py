@@ -105,18 +105,18 @@ class ElasticsearchBackend():
             response = es.search(
                 index=index,
                 body={
-                "query": {
-                    "bool": {
-                        "must_not": [
-                            {
-                                "term": {
-                                    "consumed_by": {
-                                        "value": consumer
+                    "query": {
+                        "bool": {
+                            "must_not": [
+                                {
+                                    "term": {
+                                        "consumed_by": {
+                                            "value": consumer
+                                        }
                                     }
                                 }
-                            }
-                        ]
-                    }
+                            ]
+                        }
                     },
                     "sort": { "timestamp": "asc"},
                     "size": batch,
