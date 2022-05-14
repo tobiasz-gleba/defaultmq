@@ -1,10 +1,8 @@
 from elasticsearch import Elasticsearch, NotFoundError, AuthenticationException
-import redis
 import json
-# from utils.observability import logger
 from utils.exceptions import NotFoundInDatabase, UnauthorizedDbAccess
 from config import config
-cache = redis.Redis(host='redis', port=6379)
+from database.cache import cache
 
 class ElasticsearchBackend():
 

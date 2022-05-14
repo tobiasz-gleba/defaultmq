@@ -8,7 +8,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 app = APIRouter()
 security = HTTPBasic()
 
-@app.post("/consumption/{queue}/", response_model=Queue)
+@app.post("/consumption/{queue}", response_model=Queue)
 async def consume_events(queue: str, consumer: str | None = "elasticmq", batch: int | None = 10, credentials: HTTPBasicCredentials = Depends(security)):
     try:
         result =  await db.consume_events((credentials.username, credentials.password), queue, consumer, batch)

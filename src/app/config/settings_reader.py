@@ -35,9 +35,22 @@ class ElasticAPMSettings(BaseModel):
     class Config:
         env_file = "config.env"
 
+
+class CacheSettings(BaseModel):
+    CACHE_ENGINE: str = 'REDIS'
+    CACHE_URL: str = 'redis'
+    CACHE_PORT: int = 6379
+    CACHE_USER: str = "test"
+    CACHE_PASSWORD: str = "test"
+    
+    class Config:
+        env_file = "config.env"
+
+
 @lru_cache()
 class Settings(BaseSettings):
 
     server: ServerSettings = ServerSettings()
     db: DatabaseSettings = DatabaseSettings()
     elastic_apm: ElasticAPMSettings = ElasticAPMSettings()
+    cache_settings = CacheSettings()
