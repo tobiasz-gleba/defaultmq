@@ -83,6 +83,10 @@ services:
     environment:
       SERVER_DEVELOPMENT: "True"
       LOG_LEVEL: debug
+
+
+  memcached:
+    image: 'bitnami/memcached:latest'
     # volumes: 
     #   - ./src/app/logs:/app/logs
     # deploy:
